@@ -30,10 +30,12 @@
       --inner-size: clamp(14px, 2.2vmin, 24px);
       --centre-size: clamp(48px, 7vmin, 84px);
       --tracking: 0.02em;
-      --symbol-frac: 1.1; /* Fraction for the symbol ring */
-      --symbol-size: clamp(48px, 3vmin, 84px); /* Larger font size for symbols */
-      --arrow-frac: 1.4; /* Fraction for the arrow ring */
-      --arrow-size: clamp(64px, 4vmin, 128px); /* Font size for arrows */
+      --symbol-frac: 1.1;
+      --symbol-size: clamp(48px, 3vmin, 84px);
+      --arrow-frac: 1.4;
+      --arrow-size: clamp(64px, 4vmin, 128px);
+      --global-font-size: 1;
+      --spacing: 1;
     }
 
     html,body{height:100%;margin:0;overflow:hidden}
@@ -42,6 +44,14 @@
       color: var(--ink);
       font-family: "EK Roumald", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
       display:grid; place-items:center;
+
+      /* Global OT features */
+      font-variant-ligatures: common-ligatures discretionary-ligatures contextual;
+      font-variant-numeric: oldstyle-nums proportional-nums diagonal-fractions;
+      font-feature-settings: "liga" 1, "clig" 1, "calt" 1, "onum" 1, "pnum" 1, "frac" 1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: geometricPrecision;
     }
 
     .dial{ position:relative; width:var(--size); height:var(--size); border-radius:50%; }
@@ -53,12 +63,23 @@
     .label.symbol { font-size: var(--symbol-size); }
     .label.arrow { font-size: var(--arrow-size); }
 
-    .centre{ position:absolute; inset:0; display:grid; place-items:center; font-size:var(--centre-size); line-height:1; }
+    .glyph{
+      display:inline-block;
+      font-size: calc(1em * var(--global-font-size));
+      line-height: 1;
+      will-change: font-size;
+      transition: none;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .centre{ position:absolute; inset:0; display:grid; place-items:center; font-size: var(--centre-size); line-height:1; }
 
     .label[data-wobble="even"], .label[data-wobble="odd"]{
       transform:
         rotate(calc(var(--angle) + var(--offset)))
-        translateX(var(--r))
+        translateX(calc(var(--base-r) * var(--spacing)))
         rotate(90deg)
         translate(-50%, -50%);
     }
@@ -69,29 +90,121 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce){ .ring{ animation: none; } }
 
-    .scroll-heading {
-      font-family: "EK Roumald", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-      font-size: 16px;
-      font-variant: small-caps; /* Use small caps */
-      letter-spacing: var(--tracking);
-      text-align: center;
-      margin: 0; /* Remove margin to avoid affecting layout */
-      position: fixed; /* Use fixed positioning to avoid layout shift */
-      top: 0.2rem; /* Adjust top spacing */
-      left: 50%; /* Center horizontally */
-      transform: translateX(-50%); /* Center horizontally */
-      z-index: 10; /* Ensure it stays above other elements */
+    .scroll-heading{
+        font-family: "EK Roumald", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: 16px;
+        font-variant: normal;
+        letter-spacing: var(--tracking);
+        margin: 0;
+        position: fixed;
+        bottom: 0.5rem;   /* stick it near the bottom */
+        right: 0.5rem;    /* stick it near the right */
+        text-align: right;
+        z-index: 10;
+        transform: none;  /* remove the horizontal centring transform */
     }
+
+
+    .dial .label { font-style: normal; font-weight: 400; }
+    .dial.italic .label { font-style: italic; font-weight: 400; }
+    .dial.bold .label { font-style: normal; font-weight: 700; }
+    .dial.bold-italic .label { font-style: italic; font-weight: 700; }
+
+    /* ---------- Fix: use full-height lining numerals on the inner ring ---------- */
+    #inner, #inner .label, #inner .glyph{
+      /* turn OFF oldstyle, turn ON lining numerals */
+      font-variant-numeric: lining-nums proportional-nums;
+      font-feature-settings: "onum" 0, "lnum" 1, "pnum" 1, "tnum" 0;
+    }
+    /* If you want equal-width tick-like numerals on the inner ring, swap the line above for:
+       font-variant-numeric: lining-nums tabular-nums;
+       font-feature-settings: "onum" 0, "lnum" 1, "tnum" 1, "pnum" 0;
+    */
+
+    /* LEFT overlay column */
+    .left-overlay{
+      position: fixed; left: 0; top: 0; bottom: 0;
+      width: calc(100% / 4);
+      padding: 24px; box-sizing: border-box; z-index: 9999;
+      pointer-events: auto; color: rgba(19,19,19,0.9); background: transparent;
+      font-size: 24px; line-height: 1.45; overflow: auto;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: geometricPrecision;
+      font-family: "EK Roumald", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+      font-variant-ligatures: common-ligatures discretionary-ligatures contextual;
+      font-variant-numeric: oldstyle-nums proportional-nums diagonal-fractions;
+      font-feature-settings: "liga" 1, "clig" 1, "calt" 1, "onum" 1, "pnum" 1, "frac" 1;
+    }
+    .left-overlay .content { user-select: text; }
+    @media (max-width: 640px){ .left-overlay{ display:none; } }
+    .left-overlay.hidden {
+        display: none;
+    }
+
+    /* TYPE STREAM layer */
+    #type-stream{
+        position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5;
+        font-family: "EK Roumald", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        text-rendering: geometricPrecision;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+
+        font-variant-numeric: lining-nums proportional-nums;            /* <- key line */
+
+        /* OpenType: ensure all ligatures apply */
+        font-kerning: normal;
+        font-variant-ligatures: common-ligatures discretionary-ligatures historical-ligatures contextual;
+        font-feature-settings:
+            "liga" 1,  /* standard */
+            "clig" 1,  /* contextual ligatures */
+            "dlig" 1,  /* discretionary ligatures */
+            "hlig" 1,  /* historical ligatures */
+            "calt" 1,  /* contextual alternates */
+            "frac" 1,  /* fractions for 1/2 etc */
+            "lnum" 1, 
+            "onum" 0, 
+            "pnum" 1, 
+            "tnum" 0,
+    }
+
+    .type-phrase{
+      position: absolute; left: 0; top: 0; white-space: nowrap;
+      color: rgba(0, 0, 0, 1); letter-spacing: 0.01em;
+      will-change: transform; transform: translate3d(0,0,0); mix-blend-mode: normal;
+    }
+    .type-phrase[data-style="italic"]{ font-style: italic; }
+    .type-phrase[data-weight="700"]{ font-weight: 700; }
+    .type-phrase[data-weight="300"]{ font-weight: 300; }
   </style>
 </head>
 <body class="no-js">
-    <h1 class="scroll-heading" style="font-variant: small-caps;">SCROLL</h1>
+  <h1 class="scroll-heading">Designed by Conan Richards</h1>
+
+  <div id="type-stream" aria-hidden="true"></div>
+
+  <aside class="left-overlay" aria-hidden="true">
+    <div class="content">
+      <h3>Roumald's Typographic Dial ‼</h3>
+      EK Roumald is a typeface designed by Erkin Karamemet and released in 2024. It was published through Karamemet’s own foundry, making it effectively self-published rather than issued by a larger commercial house. Although some applications and showcases list the font as appearing in 2023, the official release year is 2024 according to publishing records.
+      <p></p>
+      The typeface is rooted in Anglo-American neo-classic forms, particularly those created by Linn Boyd Benton and later developed by Morris Fuller Benton around the turn of the twentieth century. References to designs such as Century Extended and Scotch are evident in the underlying structure, but EK Roumald does not simply replicate these precedents. Instead, it reframes them through a contemporary process-driven approach.
+      <p></p>
+      A central feature of the typeface is its method of conception. Karamemet employed a CNC router with a round drill bit as a “virtual drawing tool,” effectively treating the mechanics of machining as a way of sketching letterforms. This introduces a subtle technical character into the typeface and creates rounded counters reminiscent of the ink slurs found in small-type metal printing. The result is a serif display typeface that feels at once historical and engineered, sitting between traditional typographic forms and the tactile language of digital fabrication.
+      <p></p>
+      The conceptual rigour behind EK Roumald gives it a certain depth. However, it is worth noting that presenting the CNC process as a “virtual drawing tool” risks overstating its novelty. While the approach is evocative and poetic, the actual impact is stylistic rather than radically generative. The strength of the typeface lies less in its claim to process innovation and more in the way it conveys a tactile sensibility and precision that bridges revivalist serif traditions with contemporary design thinking.
+      <p></p>
+      The specimen is conceived as a dial of typographic time, a revolving register where letters, numbers, symbols, and ornaments orbit like the machinery of a clock. Instead of presenting characters in static rows, the circular arrangement foregrounds their rhythmic and mechanical qualities: rotation, spacing, and scale become integral to how the forms are seen. This reflects the design origins of EK Roumald, a typeface conceived through the mechanical process of CNC routing. The dial underscores that same sense of engineered repetition and precision, but also allows the eye to linger on the curvature and counters as they move, emphasising Roumald’s subtle mixture of revivalist serif forms and machine-driven texture.
+      <p></p>
+      The specimen is conceived as a dial of typographic time, a revolving register where letters, numbers, symbols, and ornaments orbit like the machinery of a clock. Instead of presenting characters in static rows, the circular arrangement foregrounds their rhythmic and mechanical qualities: rotation, spacing, and scale become integral to how the forms are seen. This reflects the design origins of EK Roumald, a typeface conceived through the mechanical process of CNC routing. The dial underscores that same sense of engineered repetition and precision, but also allows the eye to linger on the curvature and counters as they move, emphasising Roumald’s subtle mixture of revivalist serif forms and machine-driven texture.
+      
+    </div>
+  </aside>
+
   <main class="dial" id="dial">
-    <div id="arrows" class="ring" style="--dur: 30s;"></div> <!-- New arrows ring -->
+    <div id="arrows" class="ring" style="--dur: 30s;"></div>
     <div id="symbols" class="ring" style="--dur: 24s;"></div>
     <div id="outer" class="ring" style="--dur: 18s;"></div>
     <div id="inner" class="ring" style="--dur: 36s;"></div>
-    <div class="centre">&#x203C;</div>
+    <div class="centre" id="centre">&#x203C;</div>
   </main>
 
   <div class="fallback">
@@ -105,8 +218,8 @@
       'Aa','Bb','Cc','dD','Ee','Ff','Gg','Hh','Ii','Jj','Kk','Ll','Mm','Nn','Oo','Pp','Qq','Rr','Ss','Tt','Uu','Vv','Ww','Xx','Yy','Zz'
     ];
     const numbers = ['0','1','2','3','4','5','6','7','8','9'];
-    const symbols = Array.from({ length: 10 }, (_, i) => i === 9 ? String.fromCharCode(0x24EA) : String.fromCharCode(0x2460 + i)); // Unicode circled digits (① to ⑨, ⓪)
-    const arrows = Array(8).fill(String.fromCharCode(0x2193)); // Array of 8 downward arrows
+    const symbols = Array.from({ length: 10 }, (_, i) => i === 9 ? String.fromCharCode(0x24EA) : String.fromCharCode(0x2460 + i));
+    const arrows = Array(8).fill(String.fromCharCode(0x2193));
 
     function placeRing(container, labels, radiusPx, className){
       const N = labels.length;
@@ -116,8 +229,11 @@
         span.className = `label ${className}`;
         span.dataset.wobble = i % 2 ? 'odd' : 'even';
         span.style.setProperty('--angle', angle + 'deg');
-        span.style.setProperty('--r', radiusPx + 'px');
-        span.textContent = text;
+        span.style.setProperty('--base-r', radiusPx + 'px');
+        const glyph = document.createElement('span');
+        glyph.className = 'glyph';
+        glyph.textContent = text;
+        span.appendChild(glyph);
         container.appendChild(span);
       });
     }
@@ -129,9 +245,9 @@
 
     function build(scale=1){
       const size = dial.getBoundingClientRect().width;
-      const arrowR = (size / 2) * parseFloat(styles.getPropertyValue('--arrow-frac')) * scale * 1.8; // Radius for arrows ring
-      const symbolR = (size / 2) * parseFloat(styles.getPropertyValue('--symbol-frac')) * scale * 1.6; // Radius for symbols ring
-      const outerR = (size/2) * outerFrac * scale * 1.3; // outer grows faster
+      const arrowR = (size / 2) * parseFloat(styles.getPropertyValue('--arrow-frac')) * scale * 1.8;
+      const symbolR = (size / 2) * parseFloat(styles.getPropertyValue('--symbol-frac')) * scale * 1.6;
+      const outerR = (size/2) * outerFrac * scale * 1.3;
       const innerR = (size/2) * innerFrac * scale;
 
       const arrowsRing = document.getElementById('arrows');
@@ -139,45 +255,296 @@
       const outer = document.getElementById('outer');
       const inner = document.getElementById('inner');
 
-      arrowsRing.innerHTML = ''; // Clear previous arrows
-      symbolsRing.innerHTML = ''; // Clear previous symbols
+      arrowsRing.innerHTML = '';
+      symbolsRing.innerHTML = '';
       outer.innerHTML = '';
       inner.innerHTML = '';
 
-      placeRing(arrowsRing, arrows, arrowR, 'arrow'); // Place arrows
-      placeRing(symbolsRing, symbols, symbolR, 'symbol'); // Place symbols
+      placeRing(arrowsRing, arrows, arrowR, 'arrow');
+      placeRing(symbolsRing, symbols, symbolR, 'symbol');
       placeRing(outer, outerPairs, outerR, 'outer');
       placeRing(inner, numbers, innerR, 'inner');
     }
 
     function applyTransformations(zoom, rotation) {
-      document.getElementById('arrows').style.transform = `rotate(${rotation * 4}deg) scale(${zoom * 1.4})`; // Arrows rotate and scale
-      document.getElementById('symbols').style.transform = `rotate(${rotation * 3}deg) scale(${zoom * 1.2})`; // Symbols rotate and scale
+      document.getElementById('arrows').style.transform = `rotate(${rotation * 4}deg) scale(${zoom * 1.4})`;
+      document.getElementById('symbols').style.transform = `rotate(${rotation * 3}deg) scale(${zoom * 1.2})`;
       document.getElementById('outer').style.transform = `rotate(${rotation * 2}deg) scale(${zoom})`;
-      document.getElementById('inner').style.transform = `rotate(${rotation}deg) scale(${zoom * 0.8})`;
-      document.querySelector('.centre').style.transform = `scale(${zoom * 1.6})`; // Scale the center exclamation mark
+      document.getElementById('inner').style.transform = `rotate(${rotation}deg) scale(${zoom })`;
+      document.querySelector('.centre').style.transform = `scale(${zoom * 1.6})`;
     }
 
     let zoom = 1;
-    let rotation = 0; // Track rotation
+    let rotation = 0;
 
     build(zoom);
-    applyTransformations(zoom, rotation); // Apply initial transformations
+    applyTransformations(zoom, rotation);
 
+    /* ================== TYPE STREAM ================== */
+    const streamRoot = document.getElementById('type-stream');
+
+    const circled = Array.from({length:10}, (_,i)=> i===9 ? '⓪' : String.fromCharCode(0x2460 + i));
+    const ornamentalPhrases = [
+        { text: '(( † Dial No. ① ‼))', features: ['liga','dlig'] },
+        { text: 'Register ‡ Index ② ⁇', features: ['liga','dlig'] },
+        { text: 'Copy Proof †† Folio ③ ', features: ['liga','dlig'] },
+        { text: '((Timekeeper Ledger ④ ‼))', features: ['liga','dlig'] },
+        { text: 'Annular Copy ‡ Counter ⑤ *', features: ['liga','dlig'] },
+        { text: 'Specimen ((Scale)) ⑥ †', features: ['liga','dlig'] },
+        { text: 'Registrar ⁇ Measure ⑦ ‼', features: ['liga','dlig'] },
+        { text: 'Printer’s Mark  Plate ⑧ ‡', features: ['liga','dlig'] },
+        { text: 'Escapement † Track ⑨ *', features: ['liga','dlig'] },
+        { text: 'Century (()) Record ⓪ ⁇', features: ['liga','dlig'] },
+
+        { text: 'Archæology & Context † 1924', features: ['liga','dlig'] },
+        { text: 'Specimen ct Ligature ㊀ Tabular 0123456789', features: ['liga','dlig','tnum'] },
+        { text: 'Stature & Structure ‡ Ledger 1933', features: ['liga','dlig'] },
+        { text: 'Registrar’s Proof № 47', features: ['liga','dlig'] },
+        { text: 'Mixed Weight → Bold Index 1970', features: ['liga'] },
+        { text: 'Italicised Statement ‡ Factum', features: ['liga','dlig'] },
+        { text: 'Process & Practice 1985 Tabular: 001 | 012 | 123', features: ['liga','dlig'] },
+        { text: 'Document Archive ¶ Folio 27', features: ['liga'] },
+        { text: 'Registered Text ‡ Copyright © 2025', features: ['liga'] },
+        { text: 'Copy & Structure †† Counter › Proportional', features: ['liga','dlig'] },
+        { text: 'Typographic st / ct Ligatures 1907', features: ['liga','dlig'] },
+        { text: 'Exhibit Plate ④ No. 237', features: ['liga','dlig'] },
+        { text: 'Ledger — Tabular 1980, 1981, 1982, 1983', features: ['tnum'] },
+        { text: 'Bold Record & Italic Register', features: ['liga'] },
+        { text: 'Contract & Statute ct/st Bound †‡', features: ['liga','dlig'] }
+    ];
+
+    const fractions = [
+        { text: '1/4 Turns', features: ['frac'] },
+        { text: '3/8 Category', features: ['frac'] },
+        { text: '1/2 Minutes Elapsed', features: ['frac'] },
+        { text: '2/3', features: ['frac'] },
+        { text: '5/8', features: ['frac'] },
+        { text: '7/8', features: ['frac'] }
+    ];
+
+    const numerals = [
+        { text: '1901', features: [] },
+        { text: '1910', features: [] },
+        { text: '1923', features: [] },
+        { text: 'XIX', features: [] },
+        { text: 'MMXXV', features: [] },
+        { text: 'No. 27', features: ['liga','dlig'] },
+        { text: '№ 27', features: ['liga','dlig'] },
+        { text: '12⅓', features: ['frac'] }
+    ];
+
+    const copyBits = [
+        { text: 'Tempus fugit', features: ['liga'] },
+        { text: 'Rotary Index', features: [] },
+        { text: 'Chronometry & Copy', features: ['liga'] },
+        { text: 'Editorial Dial', features: [] },
+        { text: 'Century Specimen', features: [] },
+        { text: 'Printer’s Measure', features: ['liga'] },
+        { text: 'Erkin Karamemet', features: [] },
+        { text: 'Typographic Time', features: ['liga'] },
+        { text: 'Auxiliary Scale', features: [] },
+        { text: 'Escapement Text', features: ['liga','dlig'] },
+        { text: 'Index of Hours', features: [] },
+        { text: 'Cascading Records', features: [] }
+    ];
+
+    const phrases = [
+        ...ornamentalPhrases,
+        ...fractions,
+        ...numerals,
+        ...copyBits
+    ];
+
+    const STREAM_COUNT = 60;
+    const SIZE_MIN = 14;
+    const SIZE_MAX = 60;
+    const SPEED_MIN = 0.1;
+    const SPEED_MAX = 1.2;
+    const OFFSCREEN_BAND = 4;
+
+    const streamNodes = [];
+    let streamOffset = 0;
+// Keep phrases out of the dial’s centre to reduce clutter
+    function pickXOutsideDial(){
+        const vw = window.innerWidth || 1;
+        const dialRect = document.getElementById('dial').getBoundingClientRect();
+        const cx = dialRect.left + dialRect.width / 2;
+        const band = (dialRect.width * 0.72) / 2; // exclusion scale
+
+        const leftMax = Math.max(0, cx - band);
+        const rightMin = Math.min(vw, cx + band);
+
+        // If viewport is too narrow, fall back to anywhere
+        if (rightMin - leftMax < 120) return Math.random() * vw;
+
+        const useLeft = Math.random() < 0.5;
+        return useLeft
+            ? Math.random() * (leftMax * 0.95)
+            : rightMin + Math.random() * ((vw - rightMin) * 0.95);
+    }
+
+        // Gentle horizontal quantisation so phrases don’t collide
+        function snapToLane(x){
+        const vw = window.innerWidth || 1;
+        const LANES = 8;
+        const laneW = vw / LANES;
+        // small jitter to keep it organic
+        return Math.round(x / laneW) * laneW + (laneW * 0.15 * (Math.random() - 0.5));
+    }
+
+    const rand = (a,b)=> a + Math.random()*(b-a);
+    const choice = arr => arr[(Math.random()*arr.length)|0];
+    const map = (v, a1, a2, b1, b2)=> b1 + ( (v-a1) * (b2-b1) / (a2-a1) );
+    function createPhraseNode(phrase){
+        const el = document.createElement('span');
+        el.className = 'type-phrase';
+        el.textContent = phrase.text;
+
+        // Default OT features
+        let featureStr = '"liga" 1, "clig" 1, "calt" 1';
+
+        // Add per-phrase features
+        if (phrase.features.includes('dlig')) featureStr += ', "dlig" 1';
+        if (phrase.features.includes('tnum')) featureStr += ', "tnum" 1, "pnum" 0';
+        if (phrase.features.includes('frac')) featureStr += ', "frac" 1';
+
+        el.style.fontFeatureSettings = featureStr;
+
+        // Weight/style randomisation (you can keep this as-is)
+        const weightFlag = choice(['400','400','700','300']);
+        const styleFlag  = choice(['normal','normal','italic']);
+        const ghostFlag  = choice(['1','2','3','2']);
+
+        el.dataset.weight = weightFlag;
+        el.dataset.style  = styleFlag === 'italic' ? 'italic' : 'normal';
+        el.dataset.ghost  = ghostFlag;
+        el.style.fontWeight = weightFlag;
+        el.style.fontStyle  = styleFlag;
+
+        // Size/speed
+        const size = rand(SIZE_MIN, SIZE_MAX);
+        el.style.fontSize = size.toFixed(2) + 'px';
+        const speed = map(size, SIZE_MIN, SIZE_MAX, SPEED_MIN, SPEED_MAX);
+
+        // Placement
+        let x = pickXOutsideDial();
+        x = snapToLane(x);
+        const vh = window.innerHeight || 1;
+        const y0 = rand(-OFFSCREEN_BAND*vh, OFFSCREEN_BAND*vh);
+
+        streamRoot.appendChild(el);
+        return { el, x, y0, speed, size };
+    }
+
+
+    function seedStream(){
+      streamRoot.innerHTML = '';
+      streamNodes.length = 0;
+      for (let i=0; i<STREAM_COUNT; i++){
+        streamNodes.push(createPhraseNode(choice(phrases)));
+      }
+      renderStream(0);
+    }
+
+    function renderStream(deltaY){
+      const vh = window.innerHeight || 1;
+      for (const node of streamNodes){
+        const y = node.y0 + streamOffset * node.speed;
+        let yWrapped = y % (OFFSCREEN_BAND*2*vh);
+        if (yWrapped < -OFFSCREEN_BAND*vh) yWrapped += OFFSCREEN_BAND*2*vh;
+        const parallax = (zoom - 1) * 12;
+        node.el.style.transform = `translate3d(${(node.x + parallax).toFixed(1)}px, ${yWrapped.toFixed(1)}px, 0)`;
+      }
+    }
+
+    seedStream();
+    window.addEventListener('resize', () => {
+      seedStream();
+      build(zoom);
+      applyTransformations(zoom, rotation);
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { seedStream(); });
+    }
+
+    /* Wheel binding */
     window.addEventListener('wheel', e => {
+      const overlay = document.querySelector('.left-overlay');
+      if (overlay) {
+        const r = overlay.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          return;
+        }
+      }
       e.preventDefault();
-
-      zoom += e.deltaY * -0.001; // scroll down increases zoom
-      zoom = Math.max(0.5, Math.min(zoom, 3)); // Prevent scaling smaller than minimum size
-
-      rotation += e.deltaY * 0.1; // scroll down rotates clockwise
-      applyTransformations(zoom, rotation); // Apply transformations during scroll
+      zoom += e.deltaY * -0.001;
+      zoom = Math.max(0.5, Math.min(zoom, 3));
+      rotation += e.deltaY * 0.1;
+      applyTransformations(zoom, rotation);
+      streamOffset += e.deltaY;
+      renderStream(e.deltaY);
     }, { passive: false });
 
-    window.addEventListener('resize', () => {
-      build(zoom);
-      applyTransformations(zoom, rotation); // Reapply transformations after resize
+    /* Centre click style cycle */
+    const centreElement = document.getElementById('centre');
+    const dialElement = document.getElementById('dial');
+    const tstyles = [
+      { fontStyle: 'normal', fontWeight: '400' },
+      { fontStyle: 'italic', fontWeight: '400' },
+      { fontStyle: 'normal', fontWeight: '700' },
+      { fontStyle: 'italic', fontWeight: '700' }
+    ];
+    let currentStyleIndex = 0;
+
+    centreElement.addEventListener('click', () => {
+        // existing glyph style cycle
+        const glyphs = dialElement.querySelectorAll('.glyph');
+        const { fontStyle, fontWeight } = tstyles[currentStyleIndex];
+        glyphs.forEach(g => {
+            g.style.fontStyle = fontStyle;
+            g.style.fontWeight = fontWeight;
+        });
+        currentStyleIndex = (currentStyleIndex + 1) % tstyles.length;
+
+        // toggle overlay visibility
+        const overlay = document.querySelector('.left-overlay');
+        if (overlay) {
+            overlay.classList.toggle('hidden');
+        }
     });
+
+
+    /* rAF smoothing */
+    (function(){
+      let targetFS = 1, currentFS = 1;
+      const minFS = 1, maxFS = 16;
+      let targetSpacing = 1, currentSpacing = 1;
+      const minSpacing = 0.6, maxSpacing = 1.2;
+      const lerpFactor = 0.12;
+      const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+
+      function setTargetFromMouse(e){
+        const w = window.innerWidth || 1;
+        const nx = (e.clientX / w) * 2 - 1;
+        targetFS = clamp(1 + nx * 0.5, minFS, maxFS);
+        const h = window.innerHeight || 1;
+        const ny = (e.clientY / h) * 2 - 1;
+        targetSpacing = clamp(1 + ny * 0.5, minSpacing, maxSpacing);
+      }
+
+      function rafTick(){
+        currentFS += (targetFS - currentFS) * lerpFactor;
+        currentSpacing += (targetSpacing - currentSpacing) * lerpFactor;
+        document.documentElement.style.setProperty('--global-font-size', currentFS.toFixed(3));
+        document.documentElement.style.setProperty('--spacing', currentSpacing.toFixed(3));
+        requestAnimationFrame(rafTick);
+      }
+
+      window.addEventListener('mousemove', setTargetFromMouse, { passive: true });
+      document.documentElement.style.setProperty('--global-font-size', '1');
+      document.documentElement.style.setProperty('--spacing', '1');
+      requestAnimationFrame(rafTick);
+    })();
   </script>
 </body>
 </html>
